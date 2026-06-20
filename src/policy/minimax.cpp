@@ -3,8 +3,24 @@
 #include <algorithm>
 #include <cstring>
 #include <climits>
+#include <chrono>
 #include "state.hpp"
 #include "minimax.hpp"
+
+
+/*============================================================
+ * Session Timer (file-scoped, set at start of each search)
+ *============================================================*/
+static double g_time_limit_ms = 0.0;
+static std::chrono::steady_clock::time_point g_search_start;
+
+static bool internal_time_up(){
+    if(g_time_limit_ms <= 0.0) return false;
+    using namespace std::chrono;
+    return duration_cast<duration<double, std::milli>>(
+        steady_clock::now() - g_search_start
+    ).count() >= g_time_limit_ms;
+}
 
 
 /*============================================================
@@ -170,8 +186,7 @@ int MiniMax::eval_ctx(
 ){
     ctx.nodes++;
 
-    // Periodic time check: every 1024 nodes.
-    if((ctx.nodes & 511) == 0 && ctx.time_up()) ctx.stop = true;
+    if((ctx.nodes & 511) == 0 && internal_time_up()) ctx.stop = true;
 
     if(ply > ctx.seldepth) ctx.seldepth = ply;
     if(ctx.stop) return 0;
@@ -403,8 +418,12 @@ SearchResult MiniMax::search(
     GameHistory& history,
     SearchContext& ctx
 ){
-    ctx.reset();          // resets nodes, seldepth, and records search_start
-    g_tables.reset();     // fresh killers + history (TT persists across calls)
+    ctx.reset();       // resets nodes, seldepth
+    g_tables.reset();  // fresh killers + history (TT persists across calls)
+
+    // Start session timer (TimeLimit param set by ubgi.cpp for movetime mode)
+    g_time_limit_ms  = (double)param_int(ctx.params, "TimeLimit", 0);
+    g_search_start   = std::chrono::steady_clock::now();
 
     MMParams p = MMParams::from_map(ctx.params);
     SearchResult result;
@@ -460,7 +479,8 @@ SearchResult MiniMax::search(
 
     result.nodes    = ctx.nodes;
     result.seldepth = ctx.seldepth;
-    result.time_ms  = ctx.elapsed_ms(); // session timer
+    result.time_ms  = std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(
+                          std::chrono::steady_clock::now() - g_search_start).count();
     return result;
 }
 

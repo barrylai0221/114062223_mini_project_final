@@ -503,7 +503,7 @@ static void cmd_go(std::istringstream& iss){
     SearchContext ctx;
     ctx.params = g_params;
     if(movetime_ms > 0){
-        ctx.time_limit_ms = movetime_ms * 0.48;
+        ctx.params["TimeLimit"] = std::to_string((int)(movetime_ms * 0.48));
     }
     g_ctx.stop = false;
     g_searching = true;

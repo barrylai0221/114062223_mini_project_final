@@ -4,7 +4,6 @@
 #include <vector>
 #include <cstdint>
 #include <functional>
-#include <chrono>
 
 class State;
 
@@ -23,26 +22,9 @@ struct SearchContext {
     ParamMap params;
     std::function<void(const RootUpdate&)> on_root_update;
 
-    // Session timer
-    double time_limit_ms = 0.0;  // 0 = no limit
-    std::chrono::steady_clock::time_point search_start;
-
     void reset(){
         nodes = 0;
         seldepth = 0;
-        search_start = std::chrono::steady_clock::now();
-    }
-
-    double elapsed_ms() const {
-        using namespace std::chrono;
-        return duration_cast<duration<double, std::milli>>(
-            steady_clock::now() - search_start
-        ).count();
-    }
-
-    // Returns true when the caller-set time limit has expired.
-    bool time_up() const {
-        return time_limit_ms > 0.0 && elapsed_ms() >= time_limit_ms;
     }
 };
 
